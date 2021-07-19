@@ -1,0 +1,25 @@
+#! /usr/bin/env python3
+
+"""
+Authors:    Shichao Wang
+Created at: 2021-07-19 17:11:18
+"""
+
+from dataclasses import dataclass
+
+from dataclass_parser import parse_into_dataclass
+
+
+@dataclass(frozen=True)
+class ExtractEventChain:
+    __program__ = __file__
+
+    annotation_path: str
+
+
+def main():
+    args = parse_into_dataclass(ExtractEventChain)
+
+
+if __name__ == "__main__":
+    main()
