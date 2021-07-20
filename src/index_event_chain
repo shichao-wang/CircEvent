@@ -8,7 +8,6 @@ import gzip
 import json
 from dataclasses import dataclass
 from itertools import chain
-from typing import Dict
 
 import numpy
 from tqdm import tqdm
@@ -16,6 +15,7 @@ from tqdm import tqdm
 from dataclass_parser import parse_into_dataclass
 from preprocessing.event_indexer import VocabEventIndexer
 from preprocessing.models import EventChain
+from torch_utils import load_glove_into_dict
 
 
 @dataclass
@@ -28,15 +28,6 @@ class _IndexArguments:
     pretrained_path: str
     vocab_save_path: str
     jobs: int = 64
-
-
-def load_glove_into_dict(glove_filepath: str) -> Dict[str, numpy.ndarray]:
-    word_embeddings = {}
-    for line in tqdm(open(glove_filepath), "Loading Glove"):
-        word, *vector = line.split()
-        vec = numpy.asfarray(vector)
-        word_embeddings[word] = vec
-    return word_embeddings
 
 
 def main():

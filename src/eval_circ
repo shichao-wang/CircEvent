@@ -1,0 +1,59 @@
+#! /usr/bin/env python3
+
+"""
+Authors:    Shichao Wang
+Created at: 2021-07-20 15:16:57
+"""
+import os
+from dataclasses import dataclass
+
+import pytorch_lightning as pl
+from torch.utils.data import DataLoader
+
+from dataclass_parser import parse_into_dataclass
+from narrative_cloze.dataset import MCNCDataset
+from narrative_cloze.models import CircEventLightningModule
+
+
+@dataclass
+class EvaluationArguments:
+    test_set_path: str
+    check_point_path: str
+    context_chain_length: int = 8
+    seed: int = 1234
+
+
+def main():
+    args = parse_into_dataclass(EvaluationArguments)
+    pl.seed_everything(args.seed)
+
+    test_set = MCNCDataset(
+        args.test_set_path, context_events_length=args.context_chain_length
+    )
+    model = CircEventLightningModule.load_from_checkpoint(
+        args.check_point_path,
+        hparams_file=os.path.join(
+            os.path.dirname(os.path.dirname(args.check_point_path)),
+            "hparams.yaml",
+        ),
+    )
+
+    trainer = pl.Trainer(
+        logger=False,
+        gpus=1,
+        auto_select_gpus=True,
+    )
+    metrics = trainer.test(
+        model=model,
+        test_dataloaders=DataLoader(
+            test_set,
+            batch_size=4,
+            pin_memory=True,
+            num_workers=32,
+            # collate_fn=MCNCDataset.collate_fn,
+        ),
+    )
+
+
+if __name__ == "__main__":
+    main()

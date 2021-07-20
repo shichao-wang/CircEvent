@@ -1,0 +1,89 @@
+#! /usr/bin/env python3
+
+"""
+Authors:    Shichao Wang
+Created at: 2021-07-20 15:05:10
+"""
+from dataclasses import asdict, dataclass
+
+import pytorch_lightning as pl
+from pytorch_lightning.callbacks import EarlyStopping, ModelCheckpoint
+from pytorch_lightning.loggers import TensorBoardLogger
+
+from dataclass_parser import parse_into_dataclass
+from narrative_cloze.dataset import MCNCDataModule
+
+
+@dataclass(frozen=True)
+class _SemEventTrainingArguments:
+    __program__ = __file__
+    # data
+    logdir: str
+    dataset_path: str
+    pretrained_path: str
+
+    num_choices: int = 5
+    argument_length: int = 15
+    context_events_length: int = 8
+    # training
+    batch_size: int = 128
+    learning_rate: float = 1e-4
+    weight_decay: float = 1e-5
+    loss_reg: float = 0.0
+    # model
+    freeze_embedding: bool = False
+    hidden_size: int = 128
+    num_layers: int = 1
+    dropout: float = 0.0
+    num_heads: int = 1
+    circ_mode: str = "local"
+    reg_fn: str = "bce"
+
+
+def main():
+    args = parse_into_dataclass(_SemEventTrainingArguments)
+    pl.seed_everything(1234)
+    module = CircEventLightningModule(
+        pretrained_path=args.pretrained_path,
+        freeze_embedding=args.freeze_embedding,
+        circ_mode=args.circ_mode,
+        dropout=args.dropout,
+        hidden_size=args.hidden_size,
+        num_layers=args.num_layers,
+        num_heads=args.num_heads,
+        learning_rate=args.learning_rate,
+        weight_decay=args.weight_decay,
+        loss_reg=args.loss_reg,
+        reg_fn=args.reg_fn,
+    )
+    dm = MCNCDataModule(
+        dataset_path=args.dataset_path,
+        batch_size=args.batch_size,
+        num_choices=args.num_choices,
+        argument_length=args.argument_length,
+        context_events_length=args.context_events_length,
+        num_workers=4,
+    )
+    trainer = pl.Trainer(
+        logger=TensorBoardLogger(
+            save_dir=args.logdir, name="circ_event", default_hp_metric=False
+        ),
+        callbacks=[
+            ModelCheckpoint(
+                filename="{epoch}-{acc_val:.4f}-{acc_test:.4f}",
+                monitor="acc_val",
+                save_top_k=3,
+            ),
+            EarlyStopping(monitor="acc_val", patience=5, mode="max"),
+        ],
+        auto_select_gpus=True,
+        gpus=-1,
+        terminate_on_nan=True,
+    )
+    trainer.logger.log_hyperparams(asdict(args))
+    trainer.fit(module, datamodule=dm)
+    trainer.test(module, datamodule=dm)
+
+
+if __name__ == "__main__":
+    main()
