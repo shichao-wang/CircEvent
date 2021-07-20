@@ -1,0 +1,158 @@
+#! /usr/bin/env python3
+"""
+Author       : Shichao Wang
+Date         : 2021-03-01 21:10:18
+
+This script is used to annotate text to corenlp json output from multiple corenlp server.
+It use `stanza` for corenlp client and `joblib` for parallelism.
+"""
+
+import gzip
+import json
+import logging
+import os
+from argparse import ArgumentParser
+from sys import stderr
+from typing import List
+
+from joblib import Parallel, delayed
+from more_itertools import chunked, distribute
+from requests import ReadTimeout
+from stanza.server import CoreNLPClient, StartServer
+from stanza.server.client import TimeoutException
+
+logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger(__name__)
+
+
+def get_file_size(filepath: str) -> int:
+    return os.stat(filepath).st_size
+
+
+def batch_annotate(example_paths: List[str], endpoint: str, output_path: str):
+    client = CoreNLPClient(
+        start_server=StartServer.DONT_START,
+        endpoint=endpoint,
+        output_format="json",
+    )
+    client.ensure_alive()
+    for example_path in sorted(example_paths, key=get_file_size):  # small file first
+        basename = os.path.basename(example_path)
+        example_id, _ = os.path.splitext(basename)
+        try:
+            with open(example_path) as fp:
+                text = fp.read()
+            resp = client.annotate(text)
+        except (TimeoutException, ReadTimeout):
+            logger.warning("Timeout: %s" % example_id)
+            continue
+
+        except Exception as e:
+            logger.exception(e)
+            continue
+
+        with open(os.path.join(output_path, "%s.json" % example_id), "w") as fp:
+            json.dump(resp, fp)
+
+
+def host_annotate(
+    endpoint: str,
+    n_jobs: int,
+    example_paths: List[str],
+    output_path: str,
+):
+    CoreNLPClient(
+        StartServer.DONT_START,
+        endpoint=endpoint,
+    ).ensure_alive()
+    print("Process %s at %s. " % (len(example_paths), endpoint), file=stderr)
+    Parallel(n_jobs=n_jobs, verbose=11)(
+        delayed(batch_annotate)(paths, endpoint, output_path)
+        for paths in chunked(example_paths, 101)
+    )
+
+
+ENDPOINTS = [
+    ("https://192.168.190.189:9000", 24),
+    ("https://192.168.190.186:9000", 24),
+]
+
+
+def main():
+    logging.basicConfig(level=logging.DEBUG)
+    parser = ArgumentParser()
+    parser.add_argument(
+        "--corpus-path",
+        help="the path of directory that contains text file",
+        type=str,
+        required=True,
+    )
+    parser.add_argument(
+        "--annotation-path",
+        "-o",
+        help="annotation path to store the annotated documents",
+        type=str,
+        required=True,
+    )
+    parser.add_argument(
+        "--gz_list",
+        help="dev or test.list.gz file given by (2016)",
+        type=str,
+        required=False,
+        default=None,
+    )
+    parser.add_argument(
+        "--duplicate_list",
+        help="Path to the duplicate",
+        type=str,
+        required=False,
+        default=None,
+    )
+
+    args = parser.parse_args()
+
+    example_ids_with_txt = (
+        [bytes.decode(text) for text in gzip.open(args.gz_list).read().splitlines()]
+        if args.gz_list
+        else os.listdir(args.corpus_path)
+    )
+    example_ids = [
+        os.path.splitext(example_id_with_txt)[0]
+        for example_id_with_txt in example_ids_with_txt
+    ]
+    print(example_ids[0])
+    print("Find %d examples" % len(example_ids), file=stderr)
+
+    if args.duplicate_list:
+        duplicate_ids = {
+            line.strip()
+            for line in gzip.open(args.duplicate_list, mode="rt")
+            if line.startswith("NYT_ENG")
+        }
+        print("Load %d duplicates" % len(duplicate_ids))
+        example_ids = [
+            example_id for example_id in example_ids if example_id not in duplicate_ids
+        ]
+        print(duplicate_ids.pop())
+        print("Remained %d after removing duplicates" % len(example_ids))
+
+    example_paths = [
+        os.path.join(args.corpus_path, "%s.txt" % example_id)
+        for example_id in example_ids
+        if not os.path.exists(
+            os.path.join(args.annotation_path, "%s.json" % example_id)
+        )
+    ]
+
+    print("Remained %d after removing processed" % len(example_paths))
+
+    Parallel(len(ENDPOINTS))(
+        delayed(host_annotate)(endpoint, n_jobs, list(paths), args.annotation_path)
+        for (endpoint, n_jobs), paths in zip(
+            ENDPOINTS, distribute(len(ENDPOINTS), example_paths)
+        )
+    )
+
+
+if __name__ == "__main__":
+    main()
