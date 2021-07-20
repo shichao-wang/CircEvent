@@ -1,0 +1,5 @@
+annotators=tokenize, ssplit, pos, lemma, ner, depparse, coref
+parse.maxlen=60
+outputFormat=json
+prettyPrint=true
+timeout=600000
