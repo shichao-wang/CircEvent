@@ -13,7 +13,7 @@ from sys import stderr
 from tqdm import tqdm
 
 from dataclass_parser import parse_into_dataclass
-from preprocessing.models import IndexedChain
+from circumst_event.preprocessing.models import IndexedChain
 
 
 def load_gz_list(list_filepath: str):

@@ -1,0 +1,3 @@
+[submodule "src/multi_relational_script_learning"]
+	path = src/multi_relational_script_learning
+	url = git@github.com:Shichao-Wang/multi_relational_script_learning.git

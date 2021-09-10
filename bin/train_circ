@@ -10,8 +10,9 @@ import pytorch_lightning as pl
 from pytorch_lightning.callbacks import EarlyStopping, ModelCheckpoint
 from pytorch_lightning.loggers import TensorBoardLogger
 
+from circumst_event.narrative_cloze.models import CircEventLightningModule
 from dataclass_parser import parse_into_dataclass
-from narrative_cloze.dataset import MCNCDataModule
+from circumst_event.narrative_cloze.dataset import MCNCDataModule
 
 
 @dataclass(frozen=True)

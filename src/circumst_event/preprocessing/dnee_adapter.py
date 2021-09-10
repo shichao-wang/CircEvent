@@ -9,10 +9,13 @@ from typing import Iterator, List
 
 from nltk.corpus import wordnet
 
-from dnee.events.extract_events import extract_multi_faceted_events
-from preprocessing.models import Event, EventChain
+from multi_relational_script_learning.dnee.events.extract_events import (
+    extract_multi_faceted_events,
+)
+from circumst_event.preprocessing.models import Event, EventChain
 
-# load wordnet in import stage.
+
+# load wordnet at import stage.
 wordnet.ensure_loaded()
 
 

@@ -13,8 +13,8 @@ import numpy
 from tqdm import tqdm
 
 from dataclass_parser import parse_into_dataclass
-from preprocessing.event_indexer import VocabEventIndexer
-from preprocessing.models import EventChain
+from circumst_event.preprocessing.event_indexer import VocabEventIndexer
+from circumst_event.preprocessing.models import EventChain
 from torch_utils import load_glove_into_dict
 
 

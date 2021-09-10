@@ -11,8 +11,8 @@ import pytorch_lightning as pl
 from torch.utils.data import DataLoader
 
 from dataclass_parser import parse_into_dataclass
-from narrative_cloze.dataset import MCNCDataset
-from narrative_cloze.models import CircEventLightningModule
+from circumst_event.narrative_cloze.dataset import MCNCDataset
+from circumst_event.narrative_cloze.models import CircEventLightningModule
 
 
 @dataclass

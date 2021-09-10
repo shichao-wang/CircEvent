@@ -2,7 +2,12 @@ import itertools
 from abc import abstractmethod
 from typing import List, Mapping
 
-from preprocessing.models import Event, EventChain, IndexedChain, IndexedEvent
+from circumst_event.preprocessing.models import (
+    Event,
+    EventChain,
+    IndexedChain,
+    IndexedEvent,
+)
 
 
 def pad_and_truncate_to_length(

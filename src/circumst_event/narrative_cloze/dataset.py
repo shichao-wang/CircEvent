@@ -6,7 +6,7 @@ import gzip
 import json
 import os
 import random
-from typing import Any, Collection, Iterator, List, Optional, Union
+from typing import Collection, Iterator, List, Optional, Union
 
 import pytorch_lightning as pl
 import torch
@@ -14,8 +14,11 @@ from more_itertools import islice_extended
 from torch.utils.data import DataLoader, Dataset
 from tqdm import tqdm
 
-from narrative_cloze.models import MCNCWithSentence, MCNCWithSentenceBatch
-from preprocessing.models import IndexedChain, IndexedEvent
+from circumst_event.narrative_cloze.models import (
+    MCNCWithSentence,
+    MCNCWithSentenceBatch,
+)
+from circumst_event.preprocessing.models import IndexedChain, IndexedEvent
 
 
 def get_events_tensor(

@@ -15,8 +15,8 @@ from typing import Dict, List, Tuple
 from tqdm import tqdm
 
 from dataclass_parser import parse_into_dataclass
-from preprocessing.dnee_adapter import dnee_event_chains
-from preprocessing.models import EventChain
+from circumst_event.preprocessing.dnee_adapter import dnee_event_chains
+from circumst_event.preprocessing.models import EventChain
 
 
 def make_predicate_string(predicate: List[str]):
