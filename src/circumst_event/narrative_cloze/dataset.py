@@ -14,6 +14,7 @@ from more_itertools import islice_extended
 from torch.utils.data import DataLoader, Dataset
 from tqdm import tqdm
 
+from circumst_event.narrative_cloze.choice_generator import EventPoolChoiceGenerator
 from circumst_event.narrative_cloze.models import (
     MCNCWithSentence,
     MCNCWithSentenceBatch,
