@@ -1,13 +1,14 @@
-
 import setuptools
+
 setuptools.setup(
-    name='CircEvent',
-    version='0.0.1',
+    name="circumst_event",
+    version="1.0.0",
     packages=[setuptools.find_packages("src")],
     package_dir={"": "src"},
-    url='',
-    license='',
-    author='Shichao Wang',
-    author_email='wangshichao@dbis.nankai.edu.cn',
-    description='Incorporating Circumstance into Narrative Event Prediction'
+    url="https://github.com/Shichao-Wang/CircEvent",
+    license="",
+    author="Shichao Wang",
+    author_email="wangshichao@dbis.nankai.edu.cn",
+    description="Incorporating Circumstance into Narrative Event Prediction",
+    extra_requires={"dev": []},
 )
