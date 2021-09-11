@@ -12,8 +12,8 @@ import json
 import logging
 import os
 from argparse import ArgumentParser
-from sys import stderr
 from typing import List
+import sys
 
 from joblib import Parallel, delayed
 from more_itertools import chunked, distribute
@@ -36,7 +36,9 @@ def batch_annotate(example_paths: List[str], endpoint: str, output_path: str):
         output_format="json",
     )
     client.ensure_alive()
-    for example_path in sorted(example_paths, key=get_file_size):  # small file first
+    for example_path in sorted(
+        example_paths, key=get_file_size
+    ):  # small file first
         basename = os.path.basename(example_path)
         example_id, _ = os.path.splitext(basename)
         try:
@@ -65,7 +67,10 @@ def host_annotate(
         StartServer.DONT_START,
         endpoint=endpoint,
     ).ensure_alive()
-    print("Process %s at %s. " % (len(example_paths), endpoint), file=stderr)
+    print(
+        "Process %s at %s. " % (len(example_paths), endpoint),
+        file=sys.stderr,
+    )
     Parallel(n_jobs=n_jobs, verbose=11)(
         delayed(batch_annotate)(paths, endpoint, output_path)
         for paths in chunked(example_paths, 101)
@@ -76,6 +81,23 @@ ENDPOINTS = [
     ("https://192.168.190.189:9000", 24),
     ("https://192.168.190.186:9000", 24),
 ]
+
+
+def remove_suffix(string: str, suffix: str):
+    if string.endswith(suffix):
+        string = string[: -len(suffix)]
+    return string
+
+
+def load_list_file(
+    list_file_path: str,
+    suffix: str = None,
+):
+    with open(list_file_path) as fp:
+        ids = fp.readlines()
+    if suffix:
+        ids = [remove_suffix(i, suffix) for i in ids]
+    return ids
 
 
 def main():
@@ -96,7 +118,7 @@ def main():
     )
     parser.add_argument(
         "--gz_list",
-        help="dev or test.list.gz file given by (2016)",
+        help="Optional argument. You can use it to process on a small dataset. such as dev or test.list.gz file given by (2016)",
         type=str,
         required=False,
         default=None,
@@ -111,45 +133,54 @@ def main():
 
     args = parser.parse_args()
 
-    example_ids_with_txt = (
-        [bytes.decode(text) for text in gzip.open(args.gz_list).read().splitlines()]
+    example_txt_files = (
+        gzip.open(args.gz_list, "wt").read().splitlines()
         if args.gz_list
         else os.listdir(args.corpus_path)
     )
-    example_ids = [
-        os.path.splitext(example_id_with_txt)[0]
-        for example_id_with_txt in example_ids_with_txt
+    example_files = [
+        remove_suffix(example_txt_file, ".txt")
+        for example_txt_file in example_txt_files
     ]
-    print(example_ids[0])
-    print("Find %d examples" % len(example_ids), file=stderr)
+    print("Find %d examples" % len(example_files), file=sys.stderr)
 
     if args.duplicate_list:
-        duplicate_ids = {
-            line.strip()
-            for line in gzip.open(args.duplicate_list, mode="rt")
-            if line.startswith("NYT_ENG")
+        duplicates = set(
+            gzip.open(args.duplicate_list, mode="rt").read().splitlines()
+        )
+        print("Load %d NYT duplicates" % len(duplicates), file=sys.stderr)
+        nyt_duplicates = {
+            dup for dup in duplicates if dup.startswith("NYT_ENG")
         }
-        print("Load %d duplicates" % len(duplicate_ids))
-        example_ids = [
-            example_id for example_id in example_ids if example_id not in duplicate_ids
+        print("Load %d NYT duplicates" % len(nyt_duplicates), file=sys.stderr)
+        example_files = [
+            example_file
+            for example_file in example_files
+            if example_file not in nyt_duplicates
         ]
-        print(duplicate_ids.pop())
-        print("Remained %d after removing duplicates" % len(example_ids))
+        print(
+            "Remained %d after removing duplicates" % len(example_files),
+            file=sys.stderr,
+        )
 
-    example_paths = [
-        os.path.join(args.corpus_path, "%s.txt" % example_id)
-        for example_id in example_ids
+    doc_file_paths = [
+        os.path.join(args.corpus_path, "%s.txt" % file)
+        for file in example_files
         if not os.path.exists(
-            os.path.join(args.annotation_path, "%s.json" % example_id)
+            os.path.join(args.annotation_path, "%s.json" % file)
         )
     ]
-
-    print("Remained %d after removing processed" % len(example_paths))
+    print(
+        "Remained %d after removing processed" % len(doc_file_paths),
+        file=sys.stderr,
+    )
 
     Parallel(len(ENDPOINTS))(
-        delayed(host_annotate)(endpoint, n_jobs, list(paths), args.annotation_path)
+        delayed(host_annotate)(
+            endpoint, n_jobs, list(paths), args.annotation_path
+        )
         for (endpoint, n_jobs), paths in zip(
-            ENDPOINTS, distribute(len(ENDPOINTS), example_paths)
+            ENDPOINTS, distribute(len(ENDPOINTS), doc_file_paths)
         )
     )
 
